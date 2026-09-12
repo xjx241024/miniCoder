@@ -136,12 +136,19 @@ class ToolRegistry:
         这是乐观锁的"检查"阶段，并非互斥锁：只做冲突检测，
         真正写入由 EditTool 用 os.replace 原子完成。
         """
-        key = self._resolve_key(str(arguments.get("path", "")))
+        try:
+            key = str(self.workspace.resolve(str(arguments.get("path", ""))))
+        except WorkspaceError:
+            # 越界路径交给工具层统一拒绝；这里不查指纹，
+            # 否则会误报"文件未读取"（错误信息与真实原因不匹配）
+            return None
         fingerprint = self._read_cache.get(key)
         if fingerprint is None:
             return ToolResult.failure(
                 code="FILE_NOT_READ",
-                message=f"文件未读取: {arguments.get('path', '')}，请先 read 再 edit",
+                message=(
+                    f"文件未读取: {arguments.get('path', '')}，请先 read 再 edit"
+                ),
             )
         # 注入 read 时记录的指纹，模型无需自己传
         arguments["mtime_ms"] = fingerprint[0]
@@ -155,9 +162,8 @@ class ToolRegistry:
         新建文件无需 read；已存在文件会注入 read 时记录的指纹，
         由 WriteTool 写入前做乐观锁冲突检测。
         """
-        raw = str(arguments.get("path", ""))
         try:
-            key = str(self.workspace.resolve(raw))
+            key = str(self.workspace.resolve(str(arguments.get("path", ""))))
         except WorkspaceError:
             return None  # 越界路径交给工具层统一拒绝
         if not Path(key).is_file():
@@ -166,19 +172,15 @@ class ToolRegistry:
         if fingerprint is None:
             return ToolResult.failure(
                 code="FILE_NOT_READ",
-                message=f"文件已存在且未读取: {raw}，write 会覆盖整个文件，请先 read 再 write",
+                message=(
+                    f"文件已存在且未读取: {arguments.get('path', '')}，"
+                    "write 会覆盖整个文件，请先 read 再 write"
+                ),
             )
         arguments["mtime_ms"] = fingerprint[0]
         arguments["size_bytes"] = fingerprint[1]
         arguments["content_hash"] = fingerprint[2]
         return None
-
-    def _resolve_key(self, raw: str) -> str:
-        """把 edit 路径解析为与 read 一致的绝对路径键。"""
-        try:
-            return str(self.workspace.resolve(raw))
-        except WorkspaceError:
-            return raw
 
 
 def _coerce_value(value: object, type_name: str) -> object:

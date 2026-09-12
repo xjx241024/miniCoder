@@ -5,6 +5,7 @@ import os
 from tools.builtin.edit_tool import EditTool
 from tools.builtin.read_tool import ReadTool
 from tools.registry import ToolRegistry
+from tools.workspace import Workspace
 
 
 def _make_registry() -> ToolRegistry:
@@ -86,3 +87,14 @@ def test_edit_old_string_not_found(tmp_path):
     result = EditTool().invoke({"path": str(file), "old_string": "not exist", "new_string": "y"})
     assert result.status == "error"
     assert result.error is not None and result.error.code == "OLD_NOT_FOUND"
+
+
+def test_edit_outside_workspace_rejected(tmp_path):
+    """越界 edit 返回 OUTSIDE_WORKSPACE，而非误报 FILE_NOT_READ。"""
+    registry = ToolRegistry(workspace=Workspace(tmp_path))
+    registry.register(ReadTool(Workspace(tmp_path)))
+    registry.register(EditTool(Workspace(tmp_path)))
+    outside = tmp_path.parent / "outside.txt"
+    result = registry.call("edit", _edit_args(str(outside), "a", "b"))
+    assert result.status == "error"
+    assert result.error is not None and result.error.code == "OUTSIDE_WORKSPACE"
