@@ -1,1 +1,1 @@
-"""JobAgent 运行时：ReAct 主循环与运行状态。"""
+"""miniCoder 运行时：ReAct 主循环与运行状态。"""

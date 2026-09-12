@@ -74,12 +74,12 @@ def test_default_trace_path_suffix():
 
 
 def test_default_data_dir_env_override(tmp_path, monkeypatch):
-    """JOBAgent_DATA_DIR 环境变量可覆盖默认数据目录。"""
-    monkeypatch.setenv("JOBAgent_DATA_DIR", str(tmp_path))
+    """MINICODER_DATA_DIR 环境变量可覆盖默认数据目录。"""
+    monkeypatch.setenv("MINICODER_DATA_DIR", str(tmp_path))
     assert default_data_dir() == tmp_path
 
 
 def test_default_data_dir_defaults_to_home(monkeypatch):
-    """未设置环境变量时回退到 ~/.jobagent。"""
-    monkeypatch.delenv("JOBAgent_DATA_DIR", raising=False)
-    assert default_data_dir() == Path.home() / ".jobagent"
+    """未设置环境变量时回退到 ~/.minicoder。"""
+    monkeypatch.delenv("MINICODER_DATA_DIR", raising=False)
+    assert default_data_dir() == Path.home() / ".minicoder"

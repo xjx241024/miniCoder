@@ -8,7 +8,7 @@ from collections.abc import Iterator
 from datetime import datetime
 from pathlib import Path
 
-from memory.paths import default_trace_path  # noqa: F401  # 默认路径迁移到 ~/.jobagent
+from memory.paths import default_trace_path  # noqa: F401  # 默认路径迁移到 ~/.minicoder
 
 
 def new_session_id() -> str:

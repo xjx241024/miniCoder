@@ -60,7 +60,7 @@ def execute_once(
 
 def main(argv: list[str] | None = None) -> int:
     """解析参数并执行一次单轮任务，返回退出码（0 成功 / 2 未完成 / 1 配置缺失）。"""
-    parser = argparse.ArgumentParser(description="JobAgent 单轮任务执行器")
+    parser = argparse.ArgumentParser(description="miniCoder 单轮任务执行器")
     parser.add_argument("-p", "--prompt", required=True, help="要执行的任务")
     parser.add_argument("--max-steps", type=int, default=DEFAULT_MAX_STEPS, help="最大工具调用轮数")
     parser.add_argument("--trace", default=None, help="trace 输出路径（默认 memory/traces/）")
@@ -89,7 +89,7 @@ def main(argv: list[str] | None = None) -> int:
         return 1
 
     session_id = new_session_id()
-    # 数据落盘到 ~/.jobagent/<项目哈希>/ 下（与 CLI 一致）
+    # 数据落盘到 ~/.minicoder/<项目哈希>/ 下（与 CLI 一致）
     workspace_root = Path.cwd()
     trace_path = args.trace or default_trace_path(session_id, workspace_root=workspace_root)
     # 继续会话时，默认把新消息继续写回原 transcript 文件

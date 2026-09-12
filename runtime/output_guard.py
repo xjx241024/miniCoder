@@ -34,7 +34,7 @@ class OutputGuard:
     ):
         self.max_chars = max_chars
         self.preview_lines = preview_lines
-        # 与 trace/transcript 同属一个数据目录（~/.jobagent/<项目哈希>/artifacts/）
+        # 与 trace/transcript 同属一个数据目录（~/.minicoder/<项目哈希>/artifacts/）
         self.artifact_dir = Path(
             default_artifact_dir(workspace_root=workspace_root, data_dir=data_dir)
         )

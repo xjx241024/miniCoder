@@ -1,7 +1,7 @@
 """M8 演示：单会话持续对话 + 自动持久化 + 恢复继续（离线，用假模型）。
 
 不调用真实模型，展示：同一会话内跨轮次历史累积、trace/transcript 落到
-~/.jobagent（演示用临时目录），以及从既有 transcript 恢复继续对话。
+~/.minicoder（演示用临时目录），以及从既有 transcript 恢复继续对话。
 """
 
 from __future__ import annotations

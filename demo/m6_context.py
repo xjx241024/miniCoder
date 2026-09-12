@@ -12,13 +12,13 @@ from core.config import ContextConfig
 from core.message import FunctionCall, Message, ToolCall, system
 from runtime.context import ContextBuilder
 
-# 用 JobAgent 自身作为演示项目
-JOBAGENT_ROOT = Path(__file__).resolve().parents[1]
+# 用 miniCoder 自身作为演示项目
+MINICODER_ROOT = Path(__file__).resolve().parents[1]
 
 
 def _demo_l1_l2() -> None:
     """展示 L1 环境信息 + L2 项目规则/文件地图的拼装。"""
-    builder = ContextBuilder(JOBAGENT_ROOT)
+    builder = ContextBuilder(MINICODER_ROOT)
     print("==== system_block（L1 + L2 拼装，前 30 行） ====")
     for line in builder.system_block().splitlines()[:30]:
         print(line)
@@ -26,13 +26,13 @@ def _demo_l1_l2() -> None:
 
 
 def _demo_project_rules() -> None:
-    """在临时项目里放 AGENTS.md / .jobagent/context.md，展示 L2 自动发现。"""
+    """在临时项目里放 AGENTS.md / .minicoder/context.md，展示 L2 自动发现。"""
     with tempfile.TemporaryDirectory() as tmp:
         project = Path(tmp) / "demo_project"
-        (project / ".jobagent").mkdir(parents=True)
+        (project / ".minicoder").mkdir(parents=True)
         agents = "本仓库使用 Python 3.12。\n所有改动需通过 ruff。"
         (project / "AGENTS.md").write_text(agents, encoding="utf-8")
-        (project / ".jobagent" / "context.md").write_text("本地构建：uv sync。", encoding="utf-8")
+        (project / ".minicoder" / "context.md").write_text("本地构建：uv sync。", encoding="utf-8")
         (project / "main.py").write_text("print('hi')\n", encoding="utf-8")
         builder = ContextBuilder(project)
         print("\n==== L2 项目规则（AGENTS.md 优先，context.md 合并） ====")
@@ -41,7 +41,7 @@ def _demo_project_rules() -> None:
 
 def _demo_budget_and_compact() -> None:
     """用极小预算演示水位检测与 compact 的折叠效果。"""
-    builder = ContextBuilder(JOBAGENT_ROOT)
+    builder = ContextBuilder(MINICODER_ROOT)
     # 模拟 8 轮工具调用单元，每轮含 assistant(工具调用) + tool 结果
     messages = [system(builder.system_block())]
     for i in range(8):
@@ -59,7 +59,7 @@ def _demo_budget_and_compact() -> None:
             )
         )
 
-    tight = ContextBuilder(JOBAGENT_ROOT, ContextConfig(max_tokens=2000, keep_turns=2))
+    tight = ContextBuilder(MINICODER_ROOT, ContextConfig(max_tokens=2000, keep_turns=2))
     before = len(messages)
     print("\n==== 水位与 compact ====")
     tokens = tight.estimate_tokens(messages)

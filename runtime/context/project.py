@@ -1,4 +1,4 @@
-"""项目规则发现（L2 静态层）：从工作目录向上读取 AGENTS.md / .jobagent/context.md。"""
+"""项目规则发现（L2 静态层）：从工作目录向上读取 AGENTS.md / .minicoder/context.md。"""
 
 from __future__ import annotations
 
@@ -8,7 +8,7 @@ from pathlib import Path
 AGENT_FILES = ("AGENTS.md", "CLAUDE.md")
 
 # 用户自建的自定义上下文文件，与 AGENTS.md 同时存在时合并（AGENTS.md 在前）
-CUSTOM_FILE = ".jobagent/context.md"
+CUSTOM_FILE = ".minicoder/context.md"
 
 
 class ProjectRulesLoader:

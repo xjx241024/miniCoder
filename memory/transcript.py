@@ -8,7 +8,7 @@ from datetime import datetime
 from pathlib import Path
 
 from core.message import Message
-from memory.paths import default_transcript_path  # noqa: F401  # 默认路径迁移到 ~/.jobagent
+from memory.paths import default_transcript_path  # noqa: F401  # 默认路径迁移到 ~/.minicoder
 
 
 class TranscriptWriter:

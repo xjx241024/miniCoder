@@ -1,4 +1,4 @@
-"""运行期数据目录：默认 ~/.jobagent/<项目哈希>/，可用环境变量覆盖。
+"""运行期数据目录：默认 ~/.minicoder/<项目哈希>/，可用环境变量覆盖。
 
 把 trace / transcript / artifact 从项目内 memory/ 迁到用户主目录，
 避免污染被操作的项目仓库（仿 claude/codex 的数据存放方式）。
@@ -11,15 +11,15 @@ import os
 from pathlib import Path
 
 # 环境变量：覆盖默认数据根目录
-DATA_DIR_ENV = "JOBAgent_DATA_DIR"
+DATA_DIR_ENV = "MINICODER_DATA_DIR"
 
 
 def default_data_dir() -> Path:
-    """返回数据根目录：环境变量优先，否则 ~/.jobagent。"""
+    """返回数据根目录：环境变量优先，否则 ~/.minicoder。"""
     override = os.getenv(DATA_DIR_ENV)
     if override:
         return Path(override).expanduser()
-    return Path.home() / ".jobagent"
+    return Path.home() / ".minicoder"
 
 
 def project_key(workspace_root: str | Path) -> str:

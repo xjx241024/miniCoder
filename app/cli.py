@@ -65,13 +65,13 @@ def build_registry(workspace=None, bash_permission=None) -> ToolRegistry:
 def _apply_startup_cwd(argv: list[str] | None = None) -> None:
     """解析 --cwd <目录> 并切换工作目录（否则以当前目录为工作空间）。
 
-    让 jobagent 可以在任意目录运行：`jobagent --cwd E:/some/project`。
+    让 minicoder 可以在任意目录运行：`minicoder --cwd E:/some/project`。
     """
     args = list(sys.argv[1:] if argv is None else argv)
     if "--cwd" in args:
         index = args.index("--cwd")
         if index + 1 >= len(args):
-            console.print("[yellow]用法: jobagent --cwd <目录>[/]")
+            console.print("[yellow]用法: minicoder --cwd <目录>[/]")
             raise SystemExit(1)
         target = Path(args[index + 1]).expanduser()
         if not target.is_dir():
@@ -163,7 +163,7 @@ def main(argv: list[str] | None = None) -> None:
     console.print(
         Panel(
             "输入任务执行；/new 新会话  /resume <路径> 继续  /clean 清理  /exit 退出",
-            title="JobAgent CLI",
+            title="miniCoder CLI",
         )
     )
 

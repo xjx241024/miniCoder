@@ -1,4 +1,4 @@
-# JobAgent
+# miniCoder
 
 本地优先的编程 Agent 运行时（单 Agent、单进程、最小闭环），用于学习与实习展示。
 通过 OpenAI 兼容接口接入大模型，用 ReAct 循环驱动工具完成任务，并把每次运行落盘为可回放的 trace。
@@ -15,7 +15,8 @@ uv sync --extra dev
 .venv\Scripts\python.exe -m pytest -q
 
 # 4. 交互式 CLI（单会话：跨轮次保持上下文，最终回答流式输出）
-#    （安装后可简化成 .venv\Scripts\jobagent.exe；--cwd 可指定工作目录）
+#    安装后可简化成 .venv\Scripts\minicoder.exe；--cwd 可指定工作目录
+#    或用该命令启动(两条命令本质相同)： uv run minicoder --cwd 工作目录
 .venv\Scripts\python.exe -m app.cli
 .venv\Scripts\python.exe -m app.cli --cwd E:/some/project
 
@@ -38,7 +39,7 @@ uv sync --extra dev
 
 ## 运行期数据
 
-- 数据统一存放在用户主目录 `~/.jobagent/<项目哈希>/` 下（可用环境变量 `JOBAgent_DATA_DIR` 覆盖），不污染被操作的仓库：
+- 数据统一存放在用户主目录 `~/.minicoder/<项目哈希>/` 下（可用环境变量 `MINICODER_DATA_DIR` 覆盖），不污染被操作的仓库：
   - `traces/<会话id>.jsonl`：逐步运行记录，可回放排查
   - `transcripts/<会话id>.jsonl`：对话消息，可用于 `/resume` 继续会话
   - `artifacts/`：工具大输出落盘（后续里程碑使用）
@@ -53,10 +54,10 @@ uv sync --extra dev
 - M5 提升一轮能力（已完成）：内容哈希指纹（解决 ABA）+ 超限强制总结（partial 标记）+ 工具提示词工作流 + 默认 20 轮
 - M6 上下文工程（已完成）：L1 系统规则 / L2 项目规则（AGENTS.md + 文件地图）/ L3 会话动态拼装 + 水位检测与 compact
 - M7 安全边界（已完成）：工作空间约束（越界路径一律拒绝）+ Bash 风险分级与用户审批 + 注册中心参数清洗
-- M8 会话连续与流式（已完成）：单会话复用（跨轮次历史累积）+ `/new /resume /clean` + 流式最终回答（SSE 聚合）+ 打转检测 + 数据迁移 `~/.jobagent` 与保留清理
+- M8 会话连续与流式（已完成）：单会话复用（跨轮次历史累积）+ `/new /resume /clean` + 流式最终回答（SSE 聚合）+ 打转检测 + 数据迁移 `~/.minicoder` 与保留清理
 - M9 输出治理与预算（已完成）：超长工具输出全文落盘 `artifacts/`（模型收预览 + 精读提示，不再头部硬截断）+ 用 `usage.prompt_tokens` 实测校准上下文水位（预测 = 上一轮实测 + 新增估算）
 - M9 增强：新增 `write` 工具（新建/整文件覆盖，读后写保护 + 原子写 + 内容上限）+ L1 环境块注入 shell 类型与限制（按平台动态生成）+ `python -c` 拒绝消息给出替代路径 + `glob` 增加 `include_hidden`/`include_ignored`（默认排除噪声目录，可开关）
-- M10 启动与缓存（已完成）：`jobagent` / `jobagent-run` 命令一键启动（仿 claude / codex）+ `--cwd` 任意目录运行 + 流式请求携带 `stream_options.include_usage` 解析用量 + 前缀缓存命中逐轮观测（usage 打日志）
+- M10 启动与缓存（已完成）：`minicoder` / `minicoder-run` 命令一键启动（仿 claude / codex）+ `--cwd` 任意目录运行 + 流式请求携带 `stream_options.include_usage` 解析用量 + 前缀缓存命中逐轮观测（usage 打日志）
 
 ## 目录
 

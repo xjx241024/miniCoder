@@ -1,4 +1,4 @@
 测试运行方式
-- 在 JobAgent 目录下，用虚拟环境里的解释器运行：.venv\Scripts\python.exe -m pytest -q（-q 只显示概要）。
+- 在 JobAgent 目录下（磁盘目录名；产品名已改为 miniCoder），用虚拟环境里的解释器运行：.venv\Scripts\python.exe -m pytest -q（-q 只显示概要）。
 - 只跑某个文件：.venv\Scripts\python.exe -m pytest tests/test_llm.py；只跑某个用例：加 -k 名称，如 -k stream。
 - 也可以 uv run pytest（uv 能正常访问缓存时，比如你本机）。pytest 必须从项目根目录运行，pyproject.toml 里的 pythonpath = ["."] 才能找到 core/、tools/ 包。

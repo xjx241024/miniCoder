@@ -17,7 +17,7 @@ class AgentSession:
     """一个持续可对话的会话：把每轮新增消息累积进 history，供下一轮继续。
 
     复用同一个 AgentLoop 实例（不再每次任务重建），会话内 trace / transcript
-    持续追加到 ~/.jobagent/<项目哈希>/ 下；--resume 可从既有 transcript 恢复。
+    持续追加到 ~/.minicoder/<项目哈希>/ 下；--resume 可从既有 transcript 恢复。
     """
 
     def __init__(

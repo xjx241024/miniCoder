@@ -1,6 +1,6 @@
-# JobAgent 工程配置：uv 管理依赖，pytest 测试，ruff 检查
+# miniCoder 工程配置：uv 管理依赖，pytest 测试，ruff 检查
 [project]
-name = "jobagent"
+name = "minicoder"
 version = "0.1.0"
 description = "本地优先的编程 Agent 运行时（最小闭环版）"
 requires-python = ">=3.10"
@@ -27,10 +27,10 @@ package = true
 include = ["app*", "core*", "demo*", "memory*", "runtime*", "tools*"]
 exclude = ["tests*", "files_for_test*"]
 
-# 简化启动：安装后直接在任意目录输入 jobagent 即可（仿 claude / codex / mycodeagent）
+# 简化启动：安装后直接在任意目录输入 minicoder 即可（仿 claude / codex / mycodeagent）
 [project.scripts]
-jobagent = "app.cli:main"
-jobagent-run = "app.one_shot:main"
+minicoder = "app.cli:main"
+minicoder-run = "app.one_shot:main"
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]

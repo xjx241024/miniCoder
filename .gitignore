@@ -23,4 +23,6 @@ memory/transcripts/
 files_for_test/
 
 # 运行数据存放目录
+# 旧数据目录（改名前的运行数据，保留备查；确认无需后可删除）
 .jobagent/
+.minicoder/

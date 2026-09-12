@@ -1,1 +1,1 @@
-"""JobAgent 记忆层：JSONL trace 与会话记录（append-only），用于可观测与继续会话。"""
+"""miniCoder 记忆层：JSONL trace 与会话记录（append-only），用于可观测与继续会话。"""

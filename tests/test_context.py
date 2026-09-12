@@ -57,9 +57,9 @@ def test_project_rules_discovers_agents_md(tmp_path):
 
 
 def test_project_rules_merges_custom_context(tmp_path):
-    """AGENTS.md 与 .jobagent/context.md 并存时都注入，且 AGENTS 在前。"""
+    """AGENTS.md 与 .minicoder/context.md 并存时都注入，且 AGENTS 在前。"""
     (tmp_path / "AGENTS.md").write_text("AGENTS 内容", encoding="utf-8")
-    custom_dir = tmp_path / ".jobagent"
+    custom_dir = tmp_path / ".minicoder"
     custom_dir.mkdir()
     (custom_dir / "context.md").write_text("自定义内容", encoding="utf-8")
     block = ContextBuilder(tmp_path).project_block()
@@ -70,7 +70,12 @@ def test_project_rules_merges_custom_context(tmp_path):
 
 
 def test_project_rules_none_without_files(tmp_path):
-    """没有任何规则文件时 project_block 返回 None。"""
+    """没有任何规则文件时 project_block 返回 None。
+
+    在 tmp_path 里放 .git 标记"这是一个仓库根"：向上扫描到此停止，
+    避免命中真实仓库（miniCoder 根目录）的 AGENTS.md。
+    """
+    (tmp_path / ".git").mkdir()
     assert ContextBuilder(tmp_path).project_block() is None
 
 
