@@ -1,6 +1,6 @@
 # miniCoder 项目骨架说明（最小闭环）
 
-> 状态：规划文档，代码已从 M1 搭建到 M9（输出治理与预算）。
+> 状态：规划文档，代码已从 M1 搭建到 M11（RAG 子系统）；阶段成果以 milestone/m<n> tag 保留，main 存最新。
 > 参考：`../KamaClaude`（架构与学习地图）、`../MyCodeAgent`（工程纪律）、`../YYHDBL-HelloCodeAgentCli`（最小起点）、`../Extra09-Agent应用开发实践踩坑与经验分享.md`（设计原则来源）。
 
 ## 一、项目定位与目标
@@ -25,7 +25,7 @@
 第一版只做这些：
 - OpenAI 兼容的模型接入（DeepSeek / 通义 / 智谱 / OpenAI 可切换）
 - 一个 ReAct 主循环（思考 → 工具调用 → 观察 → 再思考，带 max_steps 上限）
-- 4 个原子工具（Glob / Grep / Read / Edit）+ 1 个低频兜底工具 Bash
+- 5 个原子工具（Glob / Grep / Read / Edit / Write）+ 1 个低频兜底工具 Bash
 - 交互式 CLI（rich）与单轮执行模式（-p 任务）
 - JSONL trace（每步输入输出可回放）与会话记录（可继续会话）
 
@@ -69,7 +69,11 @@ JobAgent/    # 本机磁盘目录名（git 仓库目录）；产品/包名已改
 │   ├── session.py           # 单会话封装（跨轮次历史 + 自动持久化 + 恢复）
 │   ├── output_guard.py      # 超长工具输出治理（全文落盘 artifacts/ + 预览提示）
 │   ├── state.py             # 会话状态与步骤记录
-│   └── context/             # 上下文工程（L1/L2/L3 + 水位 compact）
+│   ├── context/             # 上下文工程（L1/L2/L3 + 水位 compact）
+│   │   ├── builder.py       # L1/L2/L3 拼装与 compact 触发
+│   │   ├── project.py       # L2 项目规则发现（AGENTS.md / .jobagent）
+│   │   ├── repomap.py       # 文件地图（目录结构注入）
+│   │   └── budget.py        # token 水位检测与估算
 ├── tools/                   # 工具层
 │   ├── base.py              # 工具基类 + 统一响应协议
 │   ├── registry.py          # 注册、JSON Schema 生成、调用分发、读后写保护
@@ -80,6 +84,14 @@ JobAgent/    # 本机磁盘目录名（git 仓库目录）；产品/包名已改
 │       ├── edit_tool.py     # 读后写 + 乐观锁 + 原子替换
 │       ├── write_tool.py    # 新建/整文件覆盖（读后写保护 + 内容上限 + 原子写）
 │       └── bash_tool.py     # 低频兜底命令（黑白名单 + 审批 + 平台动态描述）
+├── rag/                     # RAG 子系统（M11）
+│   ├── parser.py            # 文档解析（扩展名白名单 + 指纹计算）
+│   ├── chunking.py          # 分块器（递归字符分割 + overlap，CJK 友好）
+│   ├── embeddings.py        # OpenAI 兼容 /embeddings 客户端（批量 + 重试）
+│   ├── store.py             # sqlite-vec 向量库（元数据 + 向量表 + 余弦检索）
+│   ├── indexer.py           # 索引编排（增量哈希比对 + 批量向量化）
+│   ├── retriever.py         # 检索编排（查询向量化 + top-k + 带来源结果）
+│   └── backend.py           # 后端工厂（配置加载 + 未配置错误）
 ├── app/
 │   ├── cli.py               # 交互式命令行入口
 │   └── one_shot.py          # 单轮任务入口（-p / --resume）
@@ -97,27 +109,35 @@ JobAgent/    # 本机磁盘目录名（git 仓库目录）；产品/包名已改
 │   ├── m3_task.py           # M3 演示：搜索 → 读取 → 总结
 │   ├── m6_context.py        # M6 演示：上下文拼装 / 水位 compact
 │   ├── m7_security.py       # M7 演示：工作空间约束 + Bash 审批
-│   └── m8_session.py        # M8 演示：单会话持续对话 + 恢复
+│   ├── m8_session.py        # M8 演示：单会话持续对话 + 恢复
+│   ├── m9_output_guard.py   # M9 演示：超长输出落盘 + 精读提示
+│   └── benchmark.py         # 基准：3-5 个代表性任务测速 / 成本
 └── tests/
-    ├── test_message.py / test_llm.py   # M1 基础层（含流式聚合）
-    ├── test_tools.py / test_grep_tool.py / test_edit_tool.py  # M2/M3 工具
-    ├── test_loop.py / test_loop_trace.py   # M3/M4 循环与落盘
-    ├── test_memory.py       # trace / transcript
-    ├── test_session.py      # M8 单会话历史 / 恢复
-    ├── test_retention.py    # M8 数据保留清理
-    ├── test_oneshot.py      # 单轮入口
-    └── test_bash_tool.py    # Bash 兜底工具
+    ├── test_message.py / test_llm.py      # M1 基础层（含流式聚合、usage 解析）
+    ├── test_tools.py / test_grep_tool.py / test_edit_tool.py / test_write_tool.py  # M2/M3/M9 工具
+    ├── test_loop.py / test_loop_trace.py  # M3/M4 循环与落盘
+    ├── test_memory.py / test_session.py / test_retention.py  # trace / transcript / 清理
+    ├── test_workspace.py / test_security_tools.py / test_permissions.py  # M7 安全
+    ├── test_context.py / test_output_guard.py / test_cli.py  # M6 / M9 / M8
+    └── test_oneshot.py / test_bash_tool.py  # 单轮入口 / Bash 兜底
 ```
 
 ## 五、模块职责
 
 - core/config.py：把 .env 与环境变量集中成类型化配置，换模型只改配置不改代码。
 - core/message.py：统一消息结构（四种角色），tool 字段在 M2/M3 使用。
-- core/llm.py：把不同模型的 API 统一成同一个接口（chat / chat_stream），支持注入 transport 便于测试。
+- core/llm.py：统一模型接口（chat / chat_stream / chat_stream_response），流式聚合处理工具调用分片与 usage；usage_cache_tokens 解析前缀缓存命中（OpenAI cached_tokens / DeepSeek prompt_cache_hit_tokens）；支持注入 transport 便于测试。
 - runtime/loop.py：核心循环；拿到模型返回后判断是“继续思考”还是“调用工具”，超过 max_steps 强制结束；M4 起可把每一步写进 trace、把消息写进 transcript。
 - tools/registry.py：工具注册 + 生成 JSON Schema 给模型 + 调用分发 + 统一包装返回 + 读后写保护。
 - tools/builtin/edit_tool.py：唯一会改文件的工具，必须“先 Read 再 Edit”，写入时校验文件未被外部修改，用临时文件原子替换。
 - tools/builtin/bash_tool.py：低频兜底命令，命中禁止模式直接拒绝，超时 / 非零退出按错误码返回。
+- rag/parser.py：按扩展名白名单读取文本文件（Markdown/代码/配置），计算 mtime/size/SHA-256 指纹供增量索引。
+- rag/chunking.py：递归字符分割 + overlap 的纯函数分块器，优先在段落/句号等自然边界切分，CJK 友好。
+- rag/embeddings.py：OpenAI 兼容 /embeddings 客户端，支持批量与指数退避重试；服务商与 LLM 相互独立（.env 配置）。
+- rag/store.py：sqlite-vec 单文件向量库，文档/分块元数据 + 余弦 top-k 检索 + 模型/维度一致性校验。
+- rag/indexer.py：索引编排——收集 → 解析 → 分块 → 内容哈希增量比对 → 批量向量化 → 事务写入。
+- rag/retriever.py：查询向量化 → top-k 召回 → 带来源路径/分块/相似度的结果文本。
+- rag/backend.py：RAG 后端工厂；未配置 EMBEDDING_API_KEY 时返回 EMBEDDING_NOT_CONFIGURED 错误码。
 - memory/trace.py：每轮记录时间、会话、消息、工具名、参数、结果，用于排查和面试演示“可观测性”。
 - memory/transcript.py：append-only 记录消息，配合 history 参数实现“读档继续”。
 - runtime/session.py：持有单个 AgentLoop 与 history，每次 ask 把新增消息并入历史并写回 transcript，支持 resume 从既有 transcript 恢复。
@@ -139,8 +159,12 @@ JobAgent/    # 本机磁盘目录名（git 仓库目录）；产品/包名已改
 - M8 会话连续与流式（已完成）：runtime/session.py 单会话复用 + 历史累积；memory/paths.py 迁移 ~/.minicoder、memory/retention.py 保留清理；core/llm.py chat_stream_response 流式聚合（含工具调用分片）；loop 打转检测；CLI 增加 /new /resume /clean 与流式输出。
 - M9 输出治理与预算（已完成）：runtime/output_guard.py 超长输出全文落盘 artifacts/ + 预览提示（Bash 去掉头部硬截断）；ContextBuilder.note_usage 用实测 usage 校准水位；error 工具结果把错误码/原因回填给模型。
 - M9 增强：tools/builtin/write_tool.py 新建/覆盖文件（读后写保护 + 原子写 + 内容上限）；L1 环境块按平台注入 shell 类型与限制；Bash 工具描述动态生成；python -c 拒绝消息附带替代路径。
+- M10 启动与缓存（已完成）：minicoder / minicoder-run 一键启动命令（仿 claude / codex）+ --cwd 任意目录运行；流式请求携带 stream_options.include_usage 解析实测用量；usage_cache_tokens 逐轮观测前缀缓存命中（cached_tokens / prompt_cache_hit_tokens）。
+- M11 RAG 子系统（已完成）：文档解析 → 分块（CJK 友好 + overlap）→ Embedding（OpenAI 兼容，默认 SiliconFlow BAAI/bge-m3）→ sqlite-vec 本地向量库 → index_docs / search_docs 工具接入主循环 + 内容哈希增量索引 + 模型/维度变更检测。
 
 ## 七、验收清单（M4 结束时）
+
+> 注：此清单为 M4 阶段验收，当前里程碑已推进到 M11，仅作历史记录保留。
 
 - [x] `uv run python -m app.cli` 能进入交互界面并完成任务
 - [x] Agent 能自主完成“找到函数 → 读取 → 修改一行”的演示任务
@@ -151,10 +175,12 @@ JobAgent/    # 本机磁盘目录名（git 仓库目录）；产品/包名已改
 
 ## 八、下一步
 
-- 真实模型联调：配置 .env 后，用 `demo/m3_task.py` 或 `app.one_shot -p "任务"` 跑真实链路。
+- 真实模型联调：配置 .env 后，用 `demo/m3_task.py`、`demo/benchmark.py` 或 `app.one_shot -p "任务"` 跑真实链路。
 - 规划（已确认优先级）：
   - 核心（M6 已完成）：上下文工程（runtime/context/：L1/L2/L3 拼装 + 水位 compact）。
   - 安全（M7 已完成）：工作空间约束 + Bash 审批 + 参数清洗。
-  - 中等（M8 起）：会话连续性与流式交互（单会话复用 loop、~/.minicoder 数据目录、清理机制）、打转/重复调用检测、LLM 摘要式 compact、read 分段读取。
+  - 中等（M8/M9/M10 已完成）：会话连续性与流式交互（单会话复用 loop、~/.minicoder 数据目录、清理机制）、打转/重复调用检测、输出治理与预算、一键启动与缓存观测。
+  - RAG（M11 已完成）：解析 / 分块 / 向量化 / 本地向量库 / 工具接入主循环；M11.1 增强：混合检索（FTS5 + 向量 + RRF）、rerank、检索质量评测（Recall@K / MRR）、PDF 解析、benchmark 增加 RAG 任务。
+  - 待做：LLM 摘要式 compact、read 分段读取。
   - 后期：Skills / MCP / 子代理（优先级低，之后再实现）。
   - 求职场景：简历 / 岗位搜索 demo。

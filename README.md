@@ -42,7 +42,7 @@ uv sync --extra dev
 - 数据统一存放在用户主目录 `~/.minicoder/<项目哈希>/` 下（可用环境变量 `MINICODER_DATA_DIR` 覆盖），不污染被操作的仓库：
   - `traces/<会话id>.jsonl`：逐步运行记录，可回放排查
   - `transcripts/<会话id>.jsonl`：对话消息，可用于 `/resume` 继续会话
-  - `artifacts/`：工具大输出落盘（后续里程碑使用）
+  - `artifacts/`：工具大输出全文落盘（M9 起使用：模型收预览 + artifact 路径 + 精读提示）
 - 保留策略（`.env` 可调）：保留最近 `RETENTION_KEEP_SESSIONS` 个会话，超过 `RETENTION_MAX_AGE_DAYS` 天的运行文件在启动或 `/clean` 时自动清理。
 
 ## 里程碑
@@ -58,6 +58,21 @@ uv sync --extra dev
 - M9 输出治理与预算（已完成）：超长工具输出全文落盘 `artifacts/`（模型收预览 + 精读提示，不再头部硬截断）+ 用 `usage.prompt_tokens` 实测校准上下文水位（预测 = 上一轮实测 + 新增估算）
 - M9 增强：新增 `write` 工具（新建/整文件覆盖，读后写保护 + 原子写 + 内容上限）+ L1 环境块注入 shell 类型与限制（按平台动态生成）+ `python -c` 拒绝消息给出替代路径 + `glob` 增加 `include_hidden`/`include_ignored`（默认排除噪声目录，可开关）
 - M10 启动与缓存（已完成）：`minicoder` / `minicoder-run` 命令一键启动（仿 claude / codex）+ `--cwd` 任意目录运行 + 流式请求携带 `stream_options.include_usage` 解析用量 + 前缀缓存命中逐轮观测（usage 打日志）
+- M11 RAG 子系统（已完成）：文档解析 → 分块（CJK 友好 + overlap）→ Embedding（OpenAI 兼容，默认 SiliconFlow `BAAI/bge-m3`）→ sqlite-vec 本地向量库 → `index_docs` / `search_docs` 工具接入主循环 + 内容哈希增量索引 + 模型/维度变更检测
+
+## RAG 知识库（M11）
+
+配置 `.env` 中的 `EMBEDDING_*`（默认 SiliconFlow `BAAI/bge-m3`）后，miniCoder 可对工作区文档建立语义索引：
+
+```
+# 交互式对话中直接说：
+请索引 docs 目录，然后回答：miniCoder 的安全边界是怎么设计的？
+```
+
+模型会自主调用 `index_docs`（解析 → 分块 → 向量化 → 入库，内容未变自动跳过）与
+`search_docs`（查询向量化 → top-k 召回 → 带来源路径与相似度的片段）。
+索引库落 `~/.minicoder/<项目哈希>/rag/index.db`，不污染被操作的仓库；
+更换 Embedding 服务商只需改 `.env`，但更换模型需 `index_docs(rebuild=true)` 重建。
 
 ## 目录
 
@@ -67,7 +82,8 @@ uv sync --extra dev
   - `runtime/session.py`：单会话封装（跨轮次历史 + 自动持久化 + 恢复）
   - `runtime/output_guard.py`：超长工具输出治理（全文落盘 + 预览提示）
 - `prompts/`：系统提示词（行为规则 + 工具工作流程）
-- `tools/`：Glob / Grep / Read / Edit / Bash + 工作空间约束（workspace.py）与 Bash 审批（permissions.py）
+- `tools/`：Glob / Grep / Read / Edit / Write / Bash + 工作空间约束（workspace.py）与 Bash 审批（permissions.py）
+- `rag/`：RAG 子系统（M11）——文档解析 / 分块 / Embedding 客户端 / sqlite-vec 向量库 / 索引与检索编排
 - `memory/`：运行期数据（JSONL trace / transcript）+ 数据目录（paths.py）与保留清理（retention.py）
 - `app/`：交互 CLI 与单轮入口
 - `demo/`：比单元测试更完整的任务演示

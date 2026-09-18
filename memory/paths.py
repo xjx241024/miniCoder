@@ -50,3 +50,9 @@ def default_artifact_dir(*, workspace_root=None, data_dir=None) -> Path:
     """工具大输出 artifact 目录：<data_dir>/<project>/artifacts/。"""
     root = Path(workspace_root) if workspace_root else Path.cwd()
     return project_dir(root, data_dir) / "artifacts"
+
+
+def default_rag_dir(*, workspace_root=None, data_dir=None) -> Path:
+    """RAG 索引库目录：<data_dir>/<project>/rag/（M11）。"""
+    root = Path(workspace_root) if workspace_root else Path.cwd()
+    return project_dir(root, data_dir) / "rag"

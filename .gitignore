@@ -5,6 +5,7 @@ __pycache__/
 .pytest_cache/
 .pytest_tmp/
 .ruff_cache/
+.uv_cache/
 
 # 本地配置与密钥
 .env

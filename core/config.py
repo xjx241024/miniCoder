@@ -29,6 +29,29 @@ class LLMConfig(BaseModel):
     stream_include_usage: bool = Field(default=True, description="流式请求是否请求 usage")
 
 
+class EmbeddingConfig(BaseModel):
+    """Embedding 服务配置（独立于 LLM：服务商可以不同，如 LLM 用 DeepSeek、向量用 SiliconFlow）。"""
+
+    provider: str = Field(default="siliconflow", description="Embedding 服务商标识")
+    model_id: str = Field(default="BAAI/bge-m3", description="向量模型 id")
+    api_key: str = Field(default="", description="Embedding API Key")
+    base_url: str = Field(
+        default="https://api.siliconflow.cn/v1", description="OpenAI 兼容接口地址"
+    )
+    timeout_seconds: float = Field(default=60.0, description="HTTP 请求超时（秒）")
+    max_retries: int = Field(default=2, description="失败重试次数上限")
+    retry_backoff_seconds: float = Field(default=1.0, description="重试退避基数（秒）")
+    max_batch: int = Field(default=32, description="单次请求最大文本数（批量向量化）")
+
+
+class RAGConfig(BaseModel):
+    """RAG 索引参数（分块与文件大小限制）。"""
+
+    chunk_size: int = Field(default=800, description="分块目标大小（字符）")
+    chunk_overlap: int = Field(default=100, description="相邻块重叠字符数")
+    index_max_chars: int = Field(default=200_000, description="单文件最大索引字符数")
+
+
 def load_llm_config(env_file: str | Path = ".env") -> LLMConfig:
     """从 .env（若存在）读取配置并返回类型化对象。
 
@@ -49,6 +72,43 @@ def load_llm_config(env_file: str | Path = ".env") -> LLMConfig:
         max_retries=int(os.getenv("LLM_MAX_RETRIES", "2")),
         retry_backoff_seconds=float(os.getenv("LLM_RETRY_BACKOFF", "1.0")),
         stream_include_usage=os.getenv("LLM_STREAM_INCLUDE_USAGE", "1") in ("1", "true", "True"),
+    )
+
+
+def load_embedding_config(env_file: str | Path = ".env") -> EmbeddingConfig:
+    """从 .env 读取 Embedding 服务配置。
+
+    与 LLM 配置相互独立：不同服务商的接口地址 / Key / 模型可分别设置，
+    更换 Embedding 服务商只需改 .env，无需改代码。
+    """
+    env_path = Path(env_file)
+    if env_path.is_file():
+        load_dotenv(env_path)
+    else:
+        load_dotenv()
+    return EmbeddingConfig(
+        provider=os.getenv("EMBEDDING_PROVIDER", "siliconflow"),
+        model_id=os.getenv("EMBEDDING_MODEL_ID", "BAAI/bge-m3"),
+        api_key=os.getenv("EMBEDDING_API_KEY", ""),
+        base_url=os.getenv("EMBEDDING_BASE_URL", "https://api.siliconflow.cn/v1"),
+        timeout_seconds=float(os.getenv("EMBEDDING_TIMEOUT", "60")),
+        max_retries=int(os.getenv("EMBEDDING_MAX_RETRIES", "2")),
+        retry_backoff_seconds=float(os.getenv("EMBEDDING_RETRY_BACKOFF", "1.0")),
+        max_batch=int(os.getenv("EMBEDDING_MAX_BATCH", "32")),
+    )
+
+
+def load_rag_config(env_file: str | Path = ".env") -> RAGConfig:
+    """从 .env 读取 RAG 索引参数（分块大小 / overlap / 单文件上限）。"""
+    env_path = Path(env_file)
+    if env_path.is_file():
+        load_dotenv(env_path)
+    else:
+        load_dotenv()
+    return RAGConfig(
+        chunk_size=int(os.getenv("RAG_CHUNK_SIZE", "800")),
+        chunk_overlap=int(os.getenv("RAG_CHUNK_OVERLAP", "100")),
+        index_max_chars=int(os.getenv("RAG_INDEX_MAX_CHARS", "200000")),
     )
 
 

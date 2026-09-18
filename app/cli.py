@@ -25,7 +25,9 @@ from tools.builtin.bash_tool import BashTool
 from tools.builtin.edit_tool import EditTool
 from tools.builtin.glob_tool import GlobTool
 from tools.builtin.grep_tool import GrepTool
+from tools.builtin.index_docs_tool import IndexDocsTool
 from tools.builtin.read_tool import ReadTool
+from tools.builtin.search_docs_tool import SearchDocsTool
 from tools.builtin.write_tool import WriteTool
 from tools.permissions import PermissionDecision, PermissionGateway
 from tools.registry import ToolRegistry
@@ -59,6 +61,8 @@ def build_registry(workspace=None, bash_permission=None) -> ToolRegistry:
     registry.register(EditTool(workspace))
     registry.register(WriteTool(workspace))
     registry.register(BashTool(workspace, bash_permission))
+    registry.register(IndexDocsTool(workspace))
+    registry.register(SearchDocsTool(workspace))
     return registry
 
 

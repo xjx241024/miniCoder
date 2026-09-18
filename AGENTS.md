@@ -8,6 +8,7 @@ miniCoder 是本地优先的编程 Agent 运行时（ReAct 循环 + 工具系统
 - `core/`：配置、LLM 封装、消息模型
 - `runtime/`：ReAct 主循环、会话、上下文工程、输出治理
 - `tools/`：工具基类、注册中心、工作空间约束、Bash 审批、内置工具
+- `rag/`：RAG 子系统（解析 / 分块 / Embedding / sqlite-vec 向量库 / 索引与检索）
 - `memory/`：trace/transcript 落盘与数据目录
 - `app/`：CLI 与单轮入口
 - `demo/`：任务演示与基准测量
@@ -37,13 +38,14 @@ uv run python -m app.one_shot -p "任务"   # 单轮执行
 ## Commit & Pull Request
 
 - 提交按里程碑：`M<n>: <中文摘要>`；增强/修复用 `M<n> 增强: ...`，文档用 `docs: ...`。
-- 每阶段开 `milestone/m<n>` 分支保留成果，`main` 存最新。
+- 阶段成果用 `milestone/m<n>` tag 保留（本地同名分支可随时恢复），`main` 存最新。
 - PR 说明需包含：改动内容、为什么改、测试结果；涉及工具或主循环的改动附运行示例。
 
 ## Security & Configuration
 
 - 从 `.env.example` 复制 `.env` 配置 API Key，密钥不入 git。
 - 工具只能访问工作空间内路径，越界一律拒绝；Bash 按 ask/allow/deny 分级审批，非交互默认 deny。
+- RAG 只能索引工作空间内的文本文件；索引库落 `~/.minicoder/<项目>/rag/`，更换 Embedding 模型需 rebuild。
 - 运行数据落 `~/.minicoder`（可用 `MINICODER_DATA_DIR` 覆盖）；`files_for_test/` 不入 git。
 
 ## Agent-Specific Notes
