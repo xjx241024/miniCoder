@@ -38,6 +38,9 @@ uv run python -m app.one_shot -p "任务"   # 单轮执行
 ## Commit & Pull Request
 
 - 提交按里程碑：`M<n>: <中文摘要>`；增强/修复用 `M<n> 增强: ...`，文档用 `docs: ...`。
+- 新增顶层包（如 `rag/`）必须同步加入 pyproject.toml 的
+  `[tool.setuptools.packages.find] include`，否则 minicoder 命令入口会报 ModuleNotFoundError
+  （pytest 有 pythonpath 兜底，测不出打包问题）。
 - 阶段成果用 `milestone/m<n>` tag 保留（本地同名分支可随时恢复），`main` 存最新。
 - PR 说明需包含：改动内容、为什么改、测试结果；涉及工具或主循环的改动附运行示例。
 
