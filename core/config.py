@@ -50,6 +50,27 @@ class RAGConfig(BaseModel):
     chunk_size: int = Field(default=800, description="分块目标大小（字符）")
     chunk_overlap: int = Field(default=100, description="相邻块重叠字符数")
     index_max_chars: int = Field(default=200_000, description="单文件最大索引字符数")
+    search_mode: str = Field(
+        default="hybrid", description="检索模式：hybrid（向量+FTS5+RRF）/ vector / fts"
+    )
+    rrf_k: int = Field(default=60, description="RRF 融合常数 k（越大排名差异越平滑）")
+    candidate_multiplier: int = Field(
+        default=3, description="混合检索候选放大倍数（rerank 前先召回 top_k * N）"
+    )
+
+
+class RerankConfig(BaseModel):
+    """Rerank 服务配置（可选，默认关闭；SiliconFlow 提供 Cohere 兼容 /rerank）。"""
+
+    enabled: bool = Field(default=False, description="是否启用 rerank 精排")
+    model_id: str = Field(default="BAAI/bge-reranker-v2-m3", description="重排模型 id")
+    base_url: str = Field(
+        default="", description="接口地址；留空复用 EMBEDDING_BASE_URL"
+    )
+    api_key: str = Field(default="", description="API Key；留空复用 EMBEDDING_API_KEY")
+    timeout_seconds: float = Field(default=60.0, description="HTTP 请求超时（秒）")
+    max_retries: int = Field(default=2, description="失败重试次数上限")
+    retry_backoff_seconds: float = Field(default=1.0, description="重试退避基数（秒）")
 
 
 def load_llm_config(env_file: str | Path = ".env") -> LLMConfig:
@@ -109,7 +130,34 @@ def load_rag_config(env_file: str | Path = ".env") -> RAGConfig:
         chunk_size=int(os.getenv("RAG_CHUNK_SIZE", "800")),
         chunk_overlap=int(os.getenv("RAG_CHUNK_OVERLAP", "100")),
         index_max_chars=int(os.getenv("RAG_INDEX_MAX_CHARS", "200000")),
+        search_mode=_norm_search_mode(os.getenv("RAG_SEARCH_MODE", "hybrid")),
+        rrf_k=int(os.getenv("RAG_RRF_K", "60")),
+        candidate_multiplier=int(os.getenv("RAG_CANDIDATE_MULTIPLIER", "3")),
     )
+
+
+def load_rerank_config(env_file: str | Path = ".env") -> RerankConfig:
+    """从 .env 读取 rerank 配置；接口与 Key 默认复用 Embedding 服务。"""
+    env_path = Path(env_file)
+    if env_path.is_file():
+        load_dotenv(env_path)
+    else:
+        load_dotenv()
+    return RerankConfig(
+        enabled=os.getenv("RERANK_ENABLED", "0") in ("1", "true", "True"),
+        model_id=os.getenv("RERANK_MODEL_ID", "BAAI/bge-reranker-v2-m3"),
+        base_url=os.getenv("RERANK_BASE_URL", ""),
+        api_key=os.getenv("RERANK_API_KEY", ""),
+        timeout_seconds=float(os.getenv("RERANK_TIMEOUT", "60")),
+        max_retries=int(os.getenv("RERANK_MAX_RETRIES", "2")),
+        retry_backoff_seconds=float(os.getenv("RERANK_RETRY_BACKOFF", "1.0")),
+    )
+
+
+def _norm_search_mode(mode: str) -> str:
+    """归一化检索模式；非法值回退 hybrid（保证配置容错）。"""
+    normalized = (mode or "").strip().lower()
+    return normalized if normalized in ("hybrid", "vector", "fts") else "hybrid"
 
 
 class ContextConfig(BaseModel):

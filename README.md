@@ -59,6 +59,7 @@ uv sync --extra dev
 - M9 增强：新增 `write` 工具（新建/整文件覆盖，读后写保护 + 原子写 + 内容上限）+ L1 环境块注入 shell 类型与限制（按平台动态生成）+ `python -c` 拒绝消息给出替代路径 + `glob` 增加 `include_hidden`/`include_ignored`（默认排除噪声目录，可开关）
 - M10 启动与缓存（已完成）：`minicoder` / `minicoder-run` 命令一键启动（仿 claude / codex）+ `--cwd` 任意目录运行 + 流式请求携带 `stream_options.include_usage` 解析用量 + 前缀缓存命中逐轮观测（usage 打日志）
 - M11 RAG 子系统（已完成）：文档解析 → 分块（CJK 友好 + overlap）→ Embedding（OpenAI 兼容，默认 SiliconFlow `BAAI/bge-m3`）→ sqlite-vec 本地向量库 → `index_docs` / `search_docs` 工具接入主循环 + 内容哈希增量索引 + 模型/维度变更检测
+- M11 增强（已完成）：混合检索（向量 cosine + SQLite FTS5 BM25 + RRF 融合，中文按二元词组切分）+ 可选 rerank 精排（Cohere 兼容 `/rerank`，默认 `BAAI/bge-reranker-v2-m3`，失败自动降级）+ PDF（pypdf）/ DOCX（python-docx）解析 + 检索质量评测（Hit@K / MRR，`demo/m11_rag_eval.py` 离线对比三种模式）
 
 ## RAG 知识库（M11）
 
@@ -73,6 +74,11 @@ uv sync --extra dev
 `search_docs`（查询向量化 → top-k 召回 → 带来源路径与相似度的片段）。
 索引库落 `~/.minicoder/<项目哈希>/rag/index.db`，不污染被操作的仓库；
 更换 Embedding 服务商只需改 `.env`，但更换模型需 `index_docs(rebuild=true)` 重建。
+
+检索默认为 `hybrid` 模式：向量语义召回 + FTS5 关键词召回（BM25）双通道，
+候选用 RRF 融合后返回，兼顾语义泛化与关键词精确匹配；可用 `RAG_SEARCH_MODE`
+切换 `vector` / `fts`。设置 `RERANK_ENABLED=1` 后会再经 rerank 模型精排
+（接口异常自动降级为混合排序）。支持 Markdown / 纯文本 / 代码 / 配置 / PDF / DOCX。
 
 ## 目录
 

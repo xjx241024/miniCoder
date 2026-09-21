@@ -5,7 +5,8 @@ from __future__ import annotations
 from collections.abc import Callable
 from pathlib import Path
 
-from rag.backend import open_rag_backend
+from core.config import RAGConfig, load_rag_config
+from rag.backend import RAGBackend, open_rag_backend
 from rag.errors import RAGError
 from rag.retriever import DocRetriever, format_hits
 from tools.base import BaseTool, ToolResult
@@ -40,18 +41,21 @@ class SearchDocsTool(BaseTool):
         self,
         workspace: Workspace,
         backend_factory: Callable | None = None,
+        rag_config: RAGConfig | None = None,
         data_dir: str | Path | None = None,
     ):
         self.workspace = workspace
         self._backend_factory = backend_factory
+        self.rag_config = rag_config or load_rag_config()
         self.data_dir = data_dir
 
     def _run(self, arguments: dict) -> ToolResult:
-        embedder = None
-        store = None
+        backend: RAGBackend | None = None
         try:
-            embedder, store = self._open_backend()
-            retriever = DocRetriever(embedder, store)
+            backend = self._open_backend()
+            retriever = DocRetriever(
+                backend.embedder, backend.store, backend.reranker, self.rag_config
+            )
             top_k = self._clamp_top_k(arguments.get("top_k", 5))
             hits = retriever.search(arguments.get("query", ""), top_k=top_k)
             data = {
@@ -71,12 +75,10 @@ class SearchDocsTool(BaseTool):
         except RAGError as exc:
             return ToolResult.failure(exc.code, exc.message)
         finally:
-            for backend in (store, embedder):
-                close = getattr(backend, "close", None)
-                if close is not None:
-                    close()
+            if backend is not None:
+                backend.close()
 
-    def _open_backend(self):
+    def _open_backend(self) -> RAGBackend:
         """打开 RAG 后端：测试注入工厂优先，否则按 .env 配置构建真实后端。"""
         if self._backend_factory is not None:
             return self._backend_factory()

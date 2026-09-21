@@ -23,7 +23,7 @@ class DemoEmbedder:
 
     def embed_texts(self, texts: list[str]) -> list[list[float]]:
         return [
-            [float(text.count("苹果")), float(text.count("香蕉"))]
+            [0.1 + text.count("苹果"), 0.1 + text.count("香蕉")]
             for text in texts
         ]
 

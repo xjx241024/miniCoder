@@ -48,13 +48,13 @@ def test_search_returns_topk_ordered_by_similarity(tmp_path):
         store.upsert_document(doc_a, [_chunk(0, "苹果", 0, 2)], [[1.0, 0.0]])
         store.upsert_document(doc_b, [_chunk(0, "香蕉", 0, 2)], [[0.0, 1.0]])
 
-        hits = store.search([1.0, 0.0], top_k=2)
+        hits = store.search([1.0, 0.0], top_k=2, mode="vector")
 
         assert [hit.path for hit in hits] == ["apple.md", "banana.md"]
-        assert hits[0].distance == pytest.approx(0.0)
         assert hits[0].score == pytest.approx(1.0)
         assert hits[0].content == "苹果"
-        assert hits[1].distance == pytest.approx(1.0)
+        assert hits[1].score == pytest.approx(0.0)
+        assert hits[0].sources == ["vector"]  # 空 query 时 FTS 通道不参与
     finally:
         store.close()
 

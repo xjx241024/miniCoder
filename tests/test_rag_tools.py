@@ -3,6 +3,7 @@
 from core.config import EmbeddingConfig
 from core.llm import ChatResponse
 from core.message import FunctionCall, ToolCall
+from rag.backend import RAGBackend
 from rag.store import VectorStore
 from runtime.loop import AgentLoop
 from tools.builtin.index_docs_tool import IndexDocsTool
@@ -25,7 +26,7 @@ def _make_tools(tmp_path):
     db_path = tmp_path / "index.db"
 
     def factory():
-        return embedder, VectorStore(db_path, model_id="test-model")
+        return RAGBackend(embedder=embedder, store=VectorStore(db_path, model_id="test-model"))
 
     index_tool = IndexDocsTool(workspace, backend_factory=factory)
     search_tool = SearchDocsTool(workspace, backend_factory=factory)

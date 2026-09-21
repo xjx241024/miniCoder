@@ -1,7 +1,7 @@
-"""文档解析：按扩展名白名单读取文本文件，产出统一的 Document 结构（M11）。
+"""文档解析：按扩展名白名单读取文本 / PDF / DOCX，产出统一的 Document（M11）。
 
-首版只支持文本类文件（Markdown / 纯文本 / 常见代码与配置文件），
-PDF/DOCX 等二进制格式留到后续里程碑。
+文本类文件直接 UTF-8 读取；PDF 用 pypdf 提取纯文本（按页拼接）；
+DOCX 用 python-docx 提取段落文本。提取失败返回可诊断错误码。
 """
 
 from __future__ import annotations
@@ -18,6 +18,7 @@ from tools.workspace import Workspace, WorkspaceError
 # 支持索引的文本扩展名：文档 + 常见代码 / 配置文件
 SUPPORTED_EXTENSIONS = frozenset({
     ".md", ".markdown", ".mdx", ".txt", ".rst",
+    ".pdf", ".docx",
     ".py", ".js", ".ts", ".tsx", ".jsx", ".java", ".go", ".rs", ".c", ".h", ".cpp", ".hpp",
     ".cs", ".rb", ".php", ".sh", ".ps1", ".sql",
     ".json", ".yaml", ".yml", ".toml", ".ini", ".cfg", ".xml", ".html", ".css",
@@ -70,12 +71,14 @@ def parse_file(
     # 先按字节粗检（UTF-8 最长 4 字节/字符），避免把超大文件整个读进内存
     if stat.st_size > max_chars * 4:
         raise RAGError("FILE_TOO_LARGE", f"文件过大: {abs_path.name}（上限约 {max_chars} 字符）")
-    try:
-        content = abs_path.read_text(encoding="utf-8")
-    except (OSError, UnicodeDecodeError) as exc:
-        raise RAGError(
-            "DECODE_ERROR", f"文件读取失败（可能不是 UTF-8 文本）: {abs_path.name}: {exc}"
-        ) from exc
+    # 二进制文档格式（PDF / DOCX）：提取纯文本后统一走指纹与分块流程
+    suffix = abs_path.suffix.lower()
+    if suffix == ".pdf":
+        content = _read_pdf(abs_path)
+    elif suffix == ".docx":
+        content = _read_docx(abs_path)
+    else:
+        content = _read_text(abs_path)
     if len(content) > max_chars:
         raise RAGError(
             "FILE_TOO_LARGE", f"文件过大: {abs_path.name}（{len(content)} 字符，上限 {max_chars}）"
@@ -88,6 +91,53 @@ def parse_file(
         mtime_ms=int(stat.st_mtime * 1000),
         content_hash=hashlib.sha256(content.encode("utf-8")).hexdigest(),
     )
+
+
+def _read_text(abs_path: Path) -> str:
+    """读取 UTF-8 文本文件；解码失败返回 DECODE_ERROR。"""
+    try:
+        return abs_path.read_text(encoding="utf-8")
+    except (OSError, UnicodeDecodeError) as exc:
+        raise RAGError(
+            "DECODE_ERROR", f"文件读取失败（可能不是 UTF-8 文本）: {abs_path.name}: {exc}"
+        ) from exc
+
+
+def _read_pdf(abs_path: Path) -> str:
+    """用 pypdf 提取 PDF 纯文本；空文本/异常返回可诊断错误。"""
+    try:
+        from pypdf import PdfReader
+
+        reader = PdfReader(str(abs_path))
+        pages = []
+        for page in reader.pages:
+            pages.append(page.extract_text() or "")
+        content = "\n\n".join(pages).strip()
+    except ImportError as exc:
+        raise RAGError("DEPENDENCY_MISSING", "PDF 解析需要 pypdf：uv add pypdf") from exc
+    except Exception as exc:
+        raise RAGError("PARSE_ERROR", f"PDF 解析失败: {abs_path.name}: {exc}") from exc
+    if not content:
+        raise RAGError("PARSE_ERROR", f"PDF 未提取到文本（可能是扫描件）: {abs_path.name}")
+    return content
+
+
+def _read_docx(abs_path: Path) -> str:
+    """用 python-docx 提取 DOCX 段落文本；异常返回可诊断错误。"""
+    try:
+        import docx
+
+        document = docx.Document(str(abs_path))
+        content = "\n\n".join(paragraph.text for paragraph in document.paragraphs).strip()
+    except ImportError as exc:
+        raise RAGError(
+            "DEPENDENCY_MISSING", "DOCX 解析需要 python-docx：uv add python-docx"
+        ) from exc
+    except Exception as exc:
+        raise RAGError("PARSE_ERROR", f"DOCX 解析失败: {abs_path.name}: {exc}") from exc
+    if not content:
+        raise RAGError("PARSE_ERROR", f"DOCX 未提取到文本: {abs_path.name}")
+    return content
 
 
 def collect_files(

@@ -48,7 +48,7 @@ def test_index_directory_and_search(tmp_path):
         text = format_hits(hits)
         assert "apple.md" in text
         assert "苹果" in text
-        assert "相似度" in text
+        assert "分数" in text
     finally:
         store.close()
 
@@ -99,10 +99,11 @@ def test_failed_file_reported_but_others_indexed(tmp_path):
         indexer = DocumentIndexer(workspace, embedder, store, config)
         report = indexer.index_path(".", pattern="*")
 
-        # pdf 不在 collect_files 的扩展名白名单里，直接不计入 total
-        assert report.total_files == 1
+        # pdf 现已支持：解析失败计入 failed，但其他文件继续索引
+        assert report.total_files == 2
         assert report.indexed_files == 1
-        assert report.failed_files == []
+        assert len(report.failed_files) == 1
+        assert report.failed_files[0]["code"] == "PARSE_ERROR"
     finally:
         store.close()
 

@@ -91,7 +91,9 @@ JobAgent/    # 本机磁盘目录名（git 仓库目录）；产品/包名已改
 │   ├── store.py             # sqlite-vec 向量库（元数据 + 向量表 + 余弦检索）
 │   ├── indexer.py           # 索引编排（增量哈希比对 + 批量向量化）
 │   ├── retriever.py         # 检索编排（查询向量化 + top-k + 带来源结果）
-│   └── backend.py           # 后端工厂（配置加载 + 未配置错误）
+│   ├── rerank.py            # Rerank 精排客户端（Cohere 兼容 /rerank，失败降级）
+│   ├── evaluation.py        # 检索质量评测（Hit@K / MRR）
+│   └── backend.py           # 后端工厂（Embedding + 向量库 + 可选 Rerank）
 ├── app/
 │   ├── cli.py               # 交互式命令行入口
 │   └── one_shot.py          # 单轮任务入口（-p / --resume）
@@ -135,8 +137,11 @@ JobAgent/    # 本机磁盘目录名（git 仓库目录）；产品/包名已改
 - rag/chunking.py：递归字符分割 + overlap 的纯函数分块器，优先在段落/句号等自然边界切分，CJK 友好。
 - rag/embeddings.py：OpenAI 兼容 /embeddings 客户端，支持批量与指数退避重试；服务商与 LLM 相互独立（.env 配置）。
 - rag/store.py：sqlite-vec 单文件向量库，文档/分块元数据 + 余弦 top-k 检索 + 模型/维度一致性校验。
+- rag/store.py（M11 增强）：新增 FTS5 全文通道（中文按二元词组切分）与 RRF 融合，支持 hybrid / vector / fts 三种检索模式。
 - rag/indexer.py：索引编排——收集 → 解析 → 分块 → 内容哈希增量比对 → 批量向量化 → 事务写入。
-- rag/retriever.py：查询向量化 → top-k 召回 → 带来源路径/分块/相似度的结果文本。
+- rag/retriever.py：混合召回（先放大候选池）→ 可选 rerank 精排 → 带来源路径/分块/分数/通道的结果文本。
+- rag/rerank.py：Cohere 兼容 /rerank 客户端（SiliconFlow bge-reranker-v2-m3），带重试与降级。
+- rag/evaluation.py：检索质量评测（Hit@K / MRR），配合 demo/m11_rag_eval.py 离线对比检索模式。
 - rag/backend.py：RAG 后端工厂；未配置 EMBEDDING_API_KEY 时返回 EMBEDDING_NOT_CONFIGURED 错误码。
 - memory/trace.py：每轮记录时间、会话、消息、工具名、参数、结果，用于排查和面试演示“可观测性”。
 - memory/transcript.py：append-only 记录消息，配合 history 参数实现“读档继续”。
@@ -161,6 +166,7 @@ JobAgent/    # 本机磁盘目录名（git 仓库目录）；产品/包名已改
 - M9 增强：tools/builtin/write_tool.py 新建/覆盖文件（读后写保护 + 原子写 + 内容上限）；L1 环境块按平台注入 shell 类型与限制；Bash 工具描述动态生成；python -c 拒绝消息附带替代路径。
 - M10 启动与缓存（已完成）：minicoder / minicoder-run 一键启动命令（仿 claude / codex）+ --cwd 任意目录运行；流式请求携带 stream_options.include_usage 解析实测用量；usage_cache_tokens 逐轮观测前缀缓存命中（cached_tokens / prompt_cache_hit_tokens）。
 - M11 RAG 子系统（已完成）：文档解析 → 分块（CJK 友好 + overlap）→ Embedding（OpenAI 兼容，默认 SiliconFlow BAAI/bge-m3）→ sqlite-vec 本地向量库 → index_docs / search_docs 工具接入主循环 + 内容哈希增量索引 + 模型/维度变更检测。
+- M11 增强（已完成）：混合检索（向量 + FTS5 BM25 + RRF，中文二元词组）+ 可选 rerank 精排（失败降级）+ PDF/DOCX 解析 + 检索质量评测（Hit@K / MRR）。
 
 ## 七、验收清单（M4 结束时）
 
@@ -180,7 +186,7 @@ JobAgent/    # 本机磁盘目录名（git 仓库目录）；产品/包名已改
   - 核心（M6 已完成）：上下文工程（runtime/context/：L1/L2/L3 拼装 + 水位 compact）。
   - 安全（M7 已完成）：工作空间约束 + Bash 审批 + 参数清洗。
   - 中等（M8/M9/M10 已完成）：会话连续性与流式交互（单会话复用 loop、~/.minicoder 数据目录、清理机制）、打转/重复调用检测、输出治理与预算、一键启动与缓存观测。
-  - RAG（M11 已完成）：解析 / 分块 / 向量化 / 本地向量库 / 工具接入主循环；M11.1 增强：混合检索（FTS5 + 向量 + RRF）、rerank、检索质量评测（Recall@K / MRR）、PDF 解析、benchmark 增加 RAG 任务。
+  - RAG（M11 + M11 增强 已完成）：解析（含 PDF/DOCX）/ 分块 / 向量化 / 混合检索 / rerank / 检索评测；后续：benchmark 增加 RAG 任务、真实语料评测报告。
   - 待做：LLM 摘要式 compact、read 分段读取。
   - 后期：Skills / MCP / 子代理（优先级低，之后再实现）。
   - 求职场景：简历 / 岗位搜索 demo。

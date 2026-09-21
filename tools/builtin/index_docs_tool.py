@@ -6,7 +6,7 @@ from collections.abc import Callable
 from pathlib import Path
 
 from core.config import RAGConfig, load_rag_config
-from rag.backend import open_rag_backend
+from rag.backend import RAGBackend, open_rag_backend
 from rag.errors import RAGError
 from rag.indexer import DocumentIndexer
 from tools.base import BaseTool, ToolResult
@@ -55,14 +55,15 @@ class IndexDocsTool(BaseTool):
         self.data_dir = data_dir
 
     def _run(self, arguments: dict) -> ToolResult:
-        embedder = None
-        store = None
+        backend: RAGBackend | None = None
         try:
-            embedder, store = self._open_backend()
+            backend = self._open_backend()
             rebuild = bool(arguments.get("rebuild", False))
             if rebuild:
-                store.reset()
-            indexer = DocumentIndexer(self.workspace, embedder, store, self.rag_config)
+                backend.store.reset()
+            indexer = DocumentIndexer(
+                self.workspace, backend.embedder, backend.store, self.rag_config
+            )
             report = indexer.index_path(
                 arguments.get("path", ""),
                 pattern=arguments.get("pattern", "*"),
@@ -80,12 +81,10 @@ class IndexDocsTool(BaseTool):
             return ToolResult.failure(exc.code, exc.message)
         finally:
             # 每次调用独立开关后端：避免长期持有 SQLite 连接与 HTTP 连接
-            for backend in (store, embedder):
-                close = getattr(backend, "close", None)
-                if close is not None:
-                    close()
+            if backend is not None:
+                backend.close()
 
-    def _open_backend(self):
+    def _open_backend(self) -> RAGBackend:
         """打开 RAG 后端：测试注入工厂优先，否则按 .env 配置构建真实后端。"""
         if self._backend_factory is not None:
             return self._backend_factory()
